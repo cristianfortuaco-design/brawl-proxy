@@ -2,16 +2,55 @@ const express = require('express');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Token que configuramos
-const TOKEN = "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiIsImtpZCI6IjI4YTMxOGY3LTAwMDAtYTFlYi03ZmExLTJjNzQzM2M2Y2NhNSJ9.eyJpc3MiOiJzdXBlcmNlbGwiLCJhdWQiOiJzdXBlcmNlbGw6Z2FtZWFwaSIsImp0aSI6IjFlYjgwNTE5LTI2N2ItNDIyZi1hYzJlLTRiMmVmMDU3NzE5OSIsImlhdCI6MTc4NDM4NDA3Miwic3ViIjoiZGV2ZWxvcGVyLzdlZGIxZWZiLWM5MDEtOTcxNS0yOGUxLTk4NDNiOWE3YjhmYiIsInNjb3BlcyI6WyJicmF3bHN0YXJzIl0sImxpbWl0cyI6W3sidGllciI6ImRldmVsb3Blci9zaWx2ZXIiLCJ0eXBlIjoidGhyb3R0bGluZyJ9LHsiY2lkcnMiOlsiNzQuMjIwLjQ4LjIxOSJdLCJ0eXBlIjoiY2xpZW50In1dfQ.JaKdEwbnfNLvZ7fWViHECNWBHRTu9yG7DSyvV4MK8dea3ONnsEepxxm8e1CNd-ens2_GSx0XMX1o7MzPA9L-iw";
+// Configuración del Token
+// Importante: Mantén el prefijo "Bearer " antes de tu token
+const TOKEN = "Bearer TU_TOKEN_AQUI";
 
-// Esta es la ruta que falla si no está escrita exactamente así:
-app.get('/player', async (req, res) => {
-    const tag = req.query.tag ? req.query.tag.replace('#', '') : '';
-    const url = `https://api.brawlstars.com/v1/players/%23${tag}`;
-    const response = await fetch(url, { headers: { "Authorization": TOKEN } });
-    const data = await response.json();
-    res.json(data);
+// Ruta principal para verificar que el servidor está vivo
+app.get('/', (req, res) => {
+    res.send("Servidor de Brawl Proxy activo.");
 });
 
-app.listen(PORT, () => console.log('Servidor en marcha'));
+// Ruta para obtener datos de jugador
+app.get('/player', async (req, res) => {
+    const tag = req.query.tag ? req.query.tag.replace('#', '') : '';
+    
+    if (!tag) {
+        return res.status(400).json({ error: "Debes proporcionar un tag de jugador" });
+    }
+
+    try {
+        const url = `https://api.brawlstars.com/v1/players/%23${tag}`;
+        const response = await fetch(url, {
+            headers: { 
+                "Authorization": TOKEN,
+                "Accept": "application/json"
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            return res.status(response.status).json(data);
+        }
+
+        res.json(data);
+    } catch (error) {
+        res.status(500).json({ error: "Error interno al conectar con la API de Brawl Stars" });
+    }
+});
+
+// Ruta de diagnóstico para obtener la IP pública del servidor
+app.get('/mi-ip', async (req, res) => {
+    try {
+        const response = await fetch('https://api.ipify.org');
+        const ip = await response.text();
+        res.send("IP actual del servidor: " + ip);
+    } catch (e) {
+        res.status(500).send("No se pudo obtener la IP");
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Servidor iniciado en el puerto ${PORT}`);
+});
